@@ -1,6 +1,5 @@
 .idea/
 .env
-chroma_db/
 data/pdfs/
 __pycache__/
 *.pyc
