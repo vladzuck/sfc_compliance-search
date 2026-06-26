@@ -17,6 +17,16 @@ SFC_DOCUMENTS = [
         "path": "data/pdfs/sfc_automated_trading.pdf",
         "title": "Guidelines for Automated Trading Services",
         "doc_id": "sfc_automated_trading"
+    },
+    {
+        "path": "data/pdfs/sfc_fund_manager.pdf",
+        "title": "Fund Manager Code of Conduct",
+        "doc_id": "sfc_fund_manager"
+    },
+    {
+        "path": "data/pdfs/sfc_reit.pdf",
+        "title": "Code on Real Estate Investment Trusts",
+        "doc_id": "sfc_reit"
     }
 ]
 
@@ -65,6 +75,12 @@ def ingest_documents(collection: chromadb.Collection):
 
     for doc in SFC_DOCUMENTS:
         print(f"\nProcessing: {doc['title']}")
+
+        # check first before doing any work
+        existing = collection.get(ids=[f"{doc['doc_id']}_chunk_0"])
+        if existing['ids']:
+            print(f"  Already ingested, skipping.")
+            continue
 
         text = read_pdf(doc["path"])
         chunks = chunk_text(text)

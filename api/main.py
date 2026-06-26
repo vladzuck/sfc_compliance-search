@@ -47,7 +47,7 @@ def home():
             padding: 48px 24px;
         }
         .container { width: 100%; max-width: 720px; }
-        .header { text-align: center; margin-bottom: 40px; }
+        .header { text-align: center; margin-bottom: 32px; }
         .header h1 { font-size: 28px; font-weight: 600; color: #ffffff; margin-bottom: 8px; }
         .header p { font-size: 15px; color: #8b949e; line-height: 1.6; }
         .badge {
@@ -55,12 +55,40 @@ def home():
             border-radius: 999px; background: #1f6feb22; color: #58a6ff;
             border: 1px solid #1f6feb55; margin-top: 12px;
         }
+        .docs-panel {
+            background: #161b22; border: 1px solid #30363d;
+            border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;
+        }
+        .docs-header {
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; user-select: none;
+        }
+        .docs-label {
+            font-size: 11px; font-weight: 600; letter-spacing: .06em;
+            text-transform: uppercase; color: #8b949e;
+        }
+        .docs-count {
+            font-size: 11px; color: #58a6ff; background: #1f6feb22;
+            padding: 2px 9px; border-radius: 999px;
+        }
+        .docs-toggle { font-size: 12px; color: #484f58; transition: transform .2s; }
+        .docs-panel.open .docs-toggle { transform: rotate(180deg); }
+        .docs-content { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+        .docs-panel.open .docs-content { max-height: 320px; overflow-y: auto; }
+        .docs-list-inner { padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+        .doc-item {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 13px; color: #e1e4e8; padding: 8px 10px;
+            background: #0d1117; border-radius: 8px; border: 1px solid #21262d;
+        }
+        .doc-chunks {
+            font-size: 11px; color: #8b949e; background: #21262d;
+            padding: 2px 8px; border-radius: 999px; flex-shrink: 0; margin-left: 12px;
+        }
+        .docs-empty { font-size: 13px; color: #484f58; padding: 14px 0; text-align: center; }
         .search-box {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
+            background: #161b22; border: 1px solid #30363d;
+            border-radius: 12px; padding: 20px; margin-bottom: 24px;
         }
         textarea {
             width: 100%; background: #0d1117; border: 1px solid #30363d;
@@ -70,18 +98,23 @@ def home():
         }
         textarea:focus { border-color: #58a6ff; }
         textarea::placeholder { color: #484f58; }
-        .controls {
-            display: flex; align-items: center;
-            justify-content: space-between; margin-top: 12px;
-        }
+        .controls { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
         .hint { font-size: 12px; color: #484f58; }
         button {
             background: #238636; color: #ffffff; border: none;
             border-radius: 8px; padding: 10px 24px; font-size: 14px;
             font-weight: 500; cursor: pointer; transition: background .2s;
+            display: inline-flex; align-items: center; gap: 8px;
         }
         button:hover { background: #2ea043; }
         button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+        .btn-spinner {
+            width: 13px; height: 13px; border: 2px solid #ffffff55;
+            border-top-color: #ffffff; border-radius: 50%;
+            animation: spin .7s linear infinite; display: none;
+        }
+        button.loading .btn-spinner { display: inline-block; }
+        button.loading .btn-text { display: none; }
         .result {
             background: #161b22; border: 1px solid #30363d;
             border-radius: 12px; padding: 24px; display: none;
@@ -104,15 +137,7 @@ def home():
             font-size: 12px; padding: 3px 10px; border-radius: 999px;
             background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb44;
         }
-        .loading { text-align: center; padding: 32px; display: none; }
-        .loading.visible { display: block; }
-        .spinner {
-            width: 24px; height: 24px; border: 2px solid #30363d;
-            border-top-color: #58a6ff; border-radius: 50%;
-            animation: spin .8s linear infinite; margin: 0 auto 12px;
-        }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .loading p { font-size: 14px; color: #8b949e; }
         .examples { margin-bottom: 24px; }
         .examples-label { font-size: 12px; color: #8b949e; margin-bottom: 8px; }
         .example-chips { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -128,6 +153,8 @@ def home():
             font-size: 14px; display: none;
         }
         .error.visible { display: block; }
+        footer { text-align: center; margin-top: 32px; font-size: 12px; color: #484f58; }
+        footer a { color: #58a6ff; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -135,7 +162,20 @@ def home():
     <div class="header">
         <h1>SFC Compliance Search</h1>
         <p>Ask questions about SFC regulatory documents.<br>Answers are grounded in official guidelines with cited sources.</p>
-        <span class="badge">Powered by RAG · Gemini · ChromaDB</span>
+        <span class="badge">Powered by RAG &middot; Gemini &middot; ChromaDB</span>
+    </div>
+
+    <div class="docs-panel" id="docsPanel">
+        <div class="docs-header" onclick="toggleDocs()">
+            <span class="docs-label">Documents in this corpus</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span class="docs-count" id="docsCount">...</span>
+                <span class="docs-toggle">&#9662;</span>
+            </div>
+        </div>
+        <div class="docs-content" id="docsContentWrap">
+            <div class="docs-list-inner" id="docsContent">Loading...</div>
+        </div>
     </div>
 
     <div class="examples">
@@ -151,13 +191,11 @@ def home():
         <textarea id="question" placeholder="Ask a question about SFC regulations..."></textarea>
         <div class="controls">
             <span class="hint">Press Enter to search</span>
-            <button id="btn" onclick="search()">Search</button>
+            <button id="btn" onclick="search()">
+                <span class="btn-spinner"></span>
+                <span class="btn-text">Search</span>
+            </button>
         </div>
-    </div>
-
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <p>Searching regulatory documents...</p>
     </div>
 
     <div class="error" id="error"></div>
@@ -167,14 +205,23 @@ def home():
         <div class="answer" id="answer"></div>
         <div class="sources">
             <span class="sources-label">Sources:</span>
-            <span class="source-chip" id="source"></span>
+            <span id="sourceChips"></span>
         </div>
     </div>
+
+    <footer>
+        Built with FastAPI &middot; ChromaDB &middot; Gemini &nbsp;&middot;&nbsp; <a href="/docs" target="_blank">API docs</a>
+    </footer>
 </div>
 
 <script>
 function fillQuestion(el) {
     document.getElementById('question').value = el.textContent;
+    document.getElementById('question').focus();
+}
+
+function toggleDocs() {
+    document.getElementById('docsPanel').classList.toggle('open');
 }
 
 document.getElementById('question').addEventListener('keydown', function(e) {
@@ -184,17 +231,40 @@ document.getElementById('question').addEventListener('keydown', function(e) {
     }
 });
 
+async function loadDocuments() {
+    try {
+        const response = await fetch('/documents');
+        const data = await response.json();
+        const content = document.getElementById('docsContent');
+        const count = document.getElementById('docsCount');
+
+        if (!data.documents || data.documents.length === 0) {
+            content.innerHTML = '<div class="docs-empty">No documents ingested yet.</div>';
+            count.textContent = '0 docs';
+            return;
+        }
+
+        count.textContent = data.documents.length + (data.documents.length === 1 ? ' doc' : ' docs');
+        content.innerHTML = data.documents.map(doc =>
+            '<div class="doc-item"><span>' + doc.title + '</span><span class="doc-chunks">' + doc.chunks + ' chunks</span></div>'
+        ).join('');
+    } catch (err) {
+        document.getElementById('docsContent').innerHTML = '<div class="docs-empty">Could not load document list.</div>';
+        document.getElementById('docsCount').textContent = '\u2014';
+    }
+}
+loadDocuments();
+
 async function search() {
     const question = document.getElementById('question').value.trim();
     if (!question) return;
 
     const btn = document.getElementById('btn');
-    const loading = document.getElementById('loading');
     const result = document.getElementById('result');
     const error = document.getElementById('error');
 
     btn.disabled = true;
-    loading.classList.add('visible');
+    btn.classList.add('loading');
     result.classList.remove('visible');
     error.classList.remove('visible');
 
@@ -209,21 +279,46 @@ async function search() {
         const data = await response.json();
 
         document.getElementById('answer').textContent = data.answer;
-        document.getElementById('source').textContent = [...new Set(data.sources)].join(', ');
+
+        const uniqueSources = [...new Set(data.sources)];
+        document.getElementById('sourceChips').innerHTML = uniqueSources
+            .map(s => '<span class="source-chip">' + s + '</span>')
+            .join(' ');
 
         result.classList.add('visible');
     } catch (err) {
-        error.textContent = 'Something went wrong. Please try again.';
+        error.textContent = 'Something went wrong. Please try again in a moment.';
         error.classList.add('visible');
     } finally {
         btn.disabled = false;
-        loading.classList.remove('visible');
+        btn.classList.remove('loading');
     }
 }
 </script>
 </body>
 </html>
 """
+
+
+@app.get("/documents")
+def list_documents():
+    """
+    Returns a summary of every document currently stored in ChromaDB.
+    Groups chunks by doc_id so the frontend can show one row per document
+    instead of one row per chunk.
+    """
+    all_metadata = collection.get()["metadatas"]
+    seen = {}
+    for meta in all_metadata:
+        doc_id = meta["doc_id"]
+        if doc_id not in seen:
+            seen[doc_id] = {
+                "title": meta["source"],
+                "chunks": 1
+            }
+        else:
+            seen[doc_id]["chunks"] += 1
+    return {"documents": list(seen.values())}
 
 
 @app.post("/query")
